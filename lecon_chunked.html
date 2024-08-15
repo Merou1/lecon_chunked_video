@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lecon Upload</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        #uploadForm {
+            margin-top: 20px;
+        }
+        #uploadStatus {
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Add Lecon</h1>
+<form id="uploadForm">
+    <input type="text" id="titre" placeholder="Titre" required />
+    <input type="text" id="description" placeholder="Description" required />
+    <input type="text" id="cours_id" placeholder="Cours ID" required />
+    <input type="email" id="email" placeholder="Email" required />
+    <input type="text" id="refreshToken" placeholder="Refresh Token" required />
+    <input type="file" id="videoFile" accept="video/mp4" required />
+    <button type="button" id="uploadButton">Upload Lecon</button>
+</form>
+<div id="uploadStatus"></div>
+
+<script>
+    document.getElementById('uploadButton').addEventListener('click', async () => {
+        await uploadLecon();
+    });
+
+    async function uploadLecon() {
+        const titre = document.getElementById('titre').value;
+        const description = document.getElementById('description').value;
+        const cours_id = document.getElementById('cours_id').value;
+        const email = document.getElementById('email').value;
+        const refreshToken = document.getElementById('refreshToken').value;
+        const fileInput = document.getElementById('videoFile');
+        const file = fileInput.files[0];
+
+        if (!file) {
+            alert('Please select a video file to upload.');
+            return;
+        }
+
+        const chunkSize = 50 * 1024 * 1024; // 50 MB
+        const totalChunks = Math.ceil(file.size / chunkSize);
+        const fileName = file.name;
+
+        for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+            const start = chunkIndex * chunkSize;
+            const end = Math.min(start + chunkSize, file.size);
+            const chunk = file.slice(start, end);
+
+            const formData = new FormData();
+            formData.append('video', chunk);
+            formData.append('chunkIndex', chunkIndex);
+            formData.append('totalChunks', totalChunks);
+            formData.append('fileName', fileName);
+            formData.append('titre', titre);
+            formData.append('description', description);
+            formData.append('cours_id', cours_id);
+            formData.append('email', email);
+            formData.append('refreshToken', refreshToken);
+
+            try {
+                const response = await fetch('https://cours.funibia.com/api/lecons/add', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                const result = await response.json();
+
+                if (response.status !== 200 && response.status !== 201) {
+                    document.getElementById('uploadStatus').innerText = `Error: ${result.error}`;
+                    return;
+                }
+            } catch (error) {
+                console.error('Error uploading chunk:', error);
+                alert(`Error uploading chunk ${chunkIndex + 1}: ${error}`);
+                return;
+            }
+        }
+
+        alert('All chunks uploaded successfully!');
+    }
+</script>
+
+</body>
+</html>
